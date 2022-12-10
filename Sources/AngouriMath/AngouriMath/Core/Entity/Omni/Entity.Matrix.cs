@@ -11,6 +11,7 @@ using AngouriMath.Core.Exceptions;
 using HonkSharp.Laziness;
 using AngouriMath.Extensions;
 using System.Collections;
+using PeterO.Numbers;
 
 namespace AngouriMath
 {
@@ -116,7 +117,7 @@ namespace AngouriMath
 
             /// <summary>
             /// List of dimensions
-            /// If you need matrix, list 2 dimensions 
+            /// If you need matrix, list 2 dimensions
             /// If you need vector, list 1 dimension (length of the vector)
             /// You can't list 0 dimensions
             /// </summary>
@@ -192,9 +193,9 @@ namespace AngouriMath
             /// Finds the symbolical determinant via Laplace's method
             /// </summary>
             public Entity? Determinant => determinant.GetValue(
-                static @this => 
+                static @this =>
                 {
-                    if (!@this.IsSquare) 
+                    if (!@this.IsSquare)
                         return null;
                     return @this.InnerMatrix.DeterminantGaussianSafeDivision().InnerSimplified;
                 },
@@ -282,7 +283,7 @@ namespace AngouriMath
             /// <summary>
             /// Returns the n-th power of the
             /// given vector or matrix. It is
-            /// the same as sequential applying 
+            /// the same as sequential applying
             /// n-1 <see cref="TensorProduct"/> to this.
             /// </summary>
             /// <param name="exp">
@@ -527,6 +528,28 @@ namespace AngouriMath
             public static Matrix TensorProduct(Matrix a, Matrix b)
                 => MathS.ZeroMatrix(a.RowCount * b.RowCount, a.ColumnCount * b.ColumnCount)
                     .With((x, y, _) => a[x / b.RowCount, y / b.ColumnCount] * b[x % b.RowCount, y % b.ColumnCount]);
+
+            internal Entity? CharPoly()
+            {
+                var n = Rank;
+                Matrix ai;
+                var b = I(n);
+                Entity[] p = new Entity[n];
+                for (int i = 0; i < n; i++)
+                {
+                    ai = b  * this;
+                    p[i] = ai.Trace / (i + 1);
+                    var pm = new Matrix(GenTensor.CreateTensor(new(n, n), arr => p[i]));
+                    //TODO: should be PiecewiseMultiplication
+                    b = ai - pm * I(n);
+                }
+                var monomials = new Dictionary<EInteger, Entity>();
+                monomials.Add(EInteger.FromInt32(n), Integer.One);
+                for (int d = 0; d < n; d++)
+                    monomials.Add(EInteger.FromInt32(n - d - 1), p[d]);
+                return Simplificator.BuildPoly(monomials, Variable.CreateVariableUnchecked("t"));
+            }
+            //private LazyPropertyA<Entity?> charPoly;
 
             /// <summary>
             /// Gets a string representation of the
